@@ -13,6 +13,10 @@ import { Formik } from 'formik'
 import Email from '@mui/icons-material/Email'
 import Axios from 'axios'
 import Footer from '../../components/footer'
+import qs from 'qs'
+import { ArticleSharp } from '@mui/icons-material'
+import postcss from 'postcss'
+
 
 
 const Post = ({post}) => {
@@ -21,42 +25,56 @@ const Post = ({post}) => {
     pending:false,
     done:false
 })
+const [similar,setSimilar]=useState()
 
-  // useEffect(()=>{
-  //   console.log(post._id)
-  // },[])
+const query = qs.stringify({ 
+  populate: '*',
+  fields: '*',
+  publicationState: 'live',
+  locale: ['en',],
+}, {
+  encodeValuesOnly: true, // prettify url
+});
 
-  const getImage=(src)=>{
-    if(post){
-      return imageUrlBuilder(client)?.image(src)
-    }
-  }
+useEffect(()=>{
+  Axios.get(`https://storyteller-strapi.herokuapp.com/api/articles?${query}`)
+  .then((res)=>{
+    setSimilar(res.data.data)
+  })
+  console.log(post.id)
+},[])
+
+
+  const {attributes:data}=post
+
+  // const getImage=(src)=>{
+  //   if(post){
+  //     return imageUrlBuilder(client)?.image(src)
+  //   }
+  // }
   
   return (
     <div >
       <article className='bg-[#5274A6] md:mt-[-30px] p-3 md:p-6'  >
 
+<div>
 <Navbar />
+</div>
 
   <div className='grid md:grid-cols-4 md:gap-4'>
   
   <div className='bg-[#9BAFCD] md:px-10 md:p-6 md:col-span-3 rounded-lg'>
   
   <div className='justify-center grid'>
-      <img className='w-[500px] h-[200px] md:w-[950px] md:h-[400px]' src={getImage(post?.mainImage)?.url()} />
+      <img className='w-[500px] h-[200px] md:w-[950px] md:h-[450px]' src={`http://localhost:1337${data?.image.data.attributes.url}`} />
   </div>
 
   <h1 className='md:text-3xl text-2xl font-bold m-4'>
-    {post?.title}
+    {data?.title}
   </h1>
 
   <div className='text-xl m-6'>
-  <BlockContent
-  
-    blocks={post?.body}
-    imageOptions={{ w: 320, h: 240, fit: 'max' }}
-    {...client.config()}
-  />
+    {data?.content}
   </div>
   
   <Divider className='my-6' style={{backgroundColor:'#5274A6'}} variant='fullWidth' />
@@ -70,19 +88,28 @@ const Post = ({post}) => {
       <Formik initialValues={{name:'',email:'',comment:''}} onSubmit={(value)=>{
 
           if(value.name && value.email && value.comment){
-              // setLoading({
-              //   pending:true,
-              //   done:false,
+              setLoading({
+                pending:true,
+                done:false,
                 
-              // })
+              })
+
+              
 
               let data={
-                name:value.name,
-                email:value.email,
-                comment:value.comment,
-                id:post._id
-              }
+                id:post.id,
+                info:{
+                  author:{
+                  name:value.name,
+                  id:'1',
+                  email:value.email,
+                  avatar:'nill',
+                  },
+                  content:value.comment,
+                  slug:post.id
 
+                }
+              }
               Axios.post('/api/comment',{data})
               .then((res)=>{
                 console.log(res)
@@ -91,7 +118,9 @@ const Post = ({post}) => {
                     pending:false,
                     done:false
                   })
+                  alert('your comment has been submitted successfuly')
                 }
+                
               })
               .catch((err)=>{
                 if(err){
@@ -171,10 +200,22 @@ const Post = ({post}) => {
 
   <div className='md:m-8 '>
     
-    <div className='md:fixed grid justify-center md:h-[700px]md: w-[250px]  bg-[#9BAFCD] rounded-lg md:p-4 '>
+    <div className=' grid justify-center md:h-[700px] md:w-[300px] md:mt-[-50px] rounded-lg md:p-4 '>
         {/* <Card /> */}
         <div>
-
+          <p className='text-center text-2xl font-semibold text-white md:m-0 m-6 mt-[50px] md:mt-0'>
+            Worth checking out
+            </p>
+        {
+               similar ?
+               similar.map((data)=>(
+                <div className='mb-10 mt-4 grid'>
+                  <Card title={data.attributes.title} body={data.attributes.description} id={data.id} image={data.attributes.image.data.attributes.url} slug={data.attributes.slug} date={data.attributes.publishedAt} />
+                </div>
+              ))
+              :
+              null
+              }
         </div>
     </div>
 
@@ -191,26 +232,50 @@ const Post = ({post}) => {
 }
 
 export async function getStaticPaths() {
-  const paths = await client.fetch(
-    `*[_type == "post" && defined(slug.current)][].slug.current`
-  )
+  const query = qs.stringify({ 
+    populate: '*',
+    fields: '*',
+    publicationState: 'live',
+    locale: ['en',],
+  }, {
+    encodeValuesOnly: true, // prettify url
+  });
+
+  const strap=await fetch(`https://storyteller-strapi.herokuapp.com/api/articles`)
+
+  const data=await strap.json()
+  const path=data.data.map((item) => ({params: {slug:item.id.toString()}}))
 
   return {
-    paths: paths.map((slug) => ({params: {slug}})),
+    paths: path,
+    //paths:paths,
     fallback: true,
   }
 }
 
+
 export async function getStaticProps(context) {
     // It's important to default the slug so that it doesn't return "undefined"
-    const { slug = "" } = context.params
-    const post = await client.fetch(`
-      *[_type == "post" && slug.current == $slug][0]
-    `, { slug })
-    //console.log(post)
-    //console.log(post.body[0].children[0].text)
+    
+    const { slug} = context.params
+    
+    const query = qs.stringify({ 
+      populate: '*',
+      fields: '*',
+      publicationState: 'live',
+      locale: ['en',],
+    }, {
+      encodeValuesOnly: true, // prettify url
+    });
+  
+    const strap=await fetch(`https://storyteller-strapi.herokuapp.com/api/articles/${slug}?${query}`)
+  
+    const data=await strap.json()
+    const post=data.data
+
     return {
       props: {
+       
         post
       }
     }

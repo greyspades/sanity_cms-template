@@ -1,19 +1,16 @@
-import client from '../../components/client'
+
 
 const comment=async(req,res)=>{
     let data=req.body.data
-    console.log(data)
-
-    client.create({
-        _type: 'comment',
-        post: {
-          _type: 'reference',
-          _ref: data.id,
+    const options={
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
         },
-       name:data.name,
-       email:data.email,
-       comment:data.comment
-      })
+        body: JSON.stringify(data.info),
+    }
+    
+    fetch(`https://storyteller-strapi.herokuapp.com/api/comments/api::article.article:${data.id}`,options)
       .then((info)=>{
           console.log(info)
           res.send('SUCCESS')

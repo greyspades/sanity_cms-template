@@ -1,5 +1,5 @@
 import Head from 'next/head'
-import React,{useRef} from 'react'
+import React,{useRef,useEffect} from 'react'
 import styles from '../styles/Home.module.css'
 import Image from 'next/image'
 import bio from '../public/bio.jpg'
@@ -20,11 +20,12 @@ import exile from '../public/exile.jpg'
 // import author from '../public/author.png'
 // import author2 from '../public/author2.png'
 import Contact from '../components/contact'
-
+import axios from 'axios'
 import Navbar from '../components/navbar'
 import client from '../components/client'
 import HomeCard from '../components/homeCard'
 import Footer from '../components/footer'
+import qs from 'qs'
 
 
 
@@ -36,6 +37,23 @@ export default function Home({posts}) {
   const booksScroll=()=>booksRef.current.scrollIntoView()
   const contactScroll=()=>contactRef.current.scrollIntoView()
   //workRef.current.scrollIntoView()
+
+  const query = qs.stringify({ 
+    populate: '*',
+    fields: '*',
+    publicationState: 'live',
+    locale: ['en',],
+  }, {
+    encodeValuesOnly: true, // prettify url
+  });
+
+  // useEffect(()=>{
+  //   axios.get(`http://localhost:1337/api/articles?${query}`)
+  //   .then((res)=>{
+  //     console.log('test')
+  //     console.log(res.data.data.slice(0,3))
+  //   })
+  // },[])
 
   return (
     <div>
@@ -64,9 +82,9 @@ export default function Home({posts}) {
           </div> */}
 
           <div className='col-span-4'>
-          <h1 className='md:text-7xl md:mt-0 mt-[20px] text-2xl  text-white'>
+          {/* <h1 className='md:text-7xl md:mt-0 mt-[20px] text-2xl  text-white'>
             Uju the storyteller
-          </h1>
+          </h1> */}
           <p className='text-slate-100 font-bold md:text-2xl mt-6'>
             A keen observer of human interest happenings from different parts of the world.
           </p>
@@ -81,7 +99,7 @@ export default function Home({posts}) {
 
 
         <div className='grid md:col-span-1  md:pl-0  md:h-0 h-[600px]'>
-          <h4 className='text-2xl md:m-[20px] text-center'>
+          <h4 className='text-center text-2xl font-semibold text-white md:m-0 m-6 mt-[20px] md:mt-0'>
             Recent posts
           </h4>
         <div className='md:mt-[1px] mt-[-180px] grid  md:grid-rows-2 gap-8 justify-items-center  '>
@@ -93,12 +111,12 @@ export default function Home({posts}) {
 
           </div> */}
           {
-            posts.map(({_id,title,mainImage,body,_createdAt,slug})=>(
-              <div >
-                <HomeCard title={title} image={mainImage} date={_createdAt} slug={slug.current} />
-              </div>
-            ))
-          }
+                posts.map((data)=>(
+                  <div className='mb-10'>
+                    <HomeCard title={data.attributes.title} body={data.attributes.description} id={data.id} image={data.attributes.image.data.attributes.url} slug={data.attributes.slug} date={data.attributes.publishedAt} />
+                  </div>
+                ))
+              }
         </div>
         </div>
         
@@ -271,14 +289,29 @@ Betina has seen it all. Crushing poverty, beaten and marred by a jealous boyfrie
 }
 
 export async function getStaticProps() {
-  const posts = await client.fetch(`
-    *[_type == "post" ]{_id,_createdAt,body,mainImage,title,slug}[0...2]
-  `)
 
-  //console.log(posts[0]._createdAt.slice(0,10))
-  return {
-    props: {
-      posts
+  const query = qs.stringify({ 
+    populate: '*',
+    fields: '*',
+    publicationState: 'live',
+    locale: ['en',],
+  }, {
+    encodeValuesOnly: true, // prettify url
+  });
+
+  const strap=await fetch(`https://storyteller-strapi.herokuapp.com/api/articles?${query}`)
+
+  const data=await strap.json()
+  const posts=data.data.slice(0,2)
+  
+    // const posts = await client.fetch(`
+    //   *[_type == "post" ]{_id,_createdAt,body,mainImage,title,slug}[0...4]
+    // `)
+
+    //console.log(posts[0]._createdAt.slice(0,10))
+    return {
+      props: {
+        posts
+      }
     }
-  }
 }
